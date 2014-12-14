@@ -38,7 +38,11 @@ public class User implements Runnable {
 		PrintWriter out = new PrintWriter(new OutputStreamWriter(socket.getOutputStream()), true);
 		
 		// Get and execute the client's commands.
-		// TODO
+		String command = in.readLine();
+		publisher.handlesMessage(command);
+//		while(command != null) {
+//			
+//		}
 		
 		in.close();
 		out.close();

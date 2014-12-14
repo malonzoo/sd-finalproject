@@ -1,8 +1,9 @@
 package publisher;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
+import java.awt.Container;
+import java.util.*;
+
+import javax.swing.*;
 
 /**
  * This publisher keeps track of the messages and topics that the MessageServer has
@@ -12,8 +13,29 @@ import java.util.List;
 public class Publisher {
 	
 	// HashMap<String, > subscribers; // all the subscribers (held as a hash map)
-	ArrayList<Topic> topics; // all the topics (held as an ArrayList)
-	ArrayList<Message> messages; // all the messages (held as an array list)
+	private ArrayList<Topic> topics = new ArrayList<Topic>(); // all the topics (held as an ArrayList)
+	private ArrayList<Message> messages = new ArrayList<Message>(); // all the messages (held as an array list)
+	
+	// GUI elements
+	private JFrame frame;
+	private Container contentPane;
+	private JPanel globalFeed;
+	
+	public Publisher() {	
+		frame = new JFrame();
+		contentPane = frame.getContentPane();
+		contentPane.setLayout(new BoxLayout(contentPane, BoxLayout.Y_AXIS));
+		
+		initGlobalFeed();
+		
+		frame.setSize(400, 600);
+		frame.setVisible(true);
+	}
+	
+	private void initGlobalFeed() {
+		globalFeed = new JPanel();
+		//globalFeed.set
+	}
 	
 	/**
 	 * TODO: this method:
@@ -54,6 +76,6 @@ public class Publisher {
 	 * @param args
 	 */
 	public static void main(String[] args) {
-		
+		new Publisher();
 	}
 }
