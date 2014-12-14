@@ -14,6 +14,9 @@ public class MessageClient {
 	private PrintWriter out;
 	
 	private ArrayList feedMessages;
+	public static String username;
+	public static JTextField nameField;
+	public static JFrame namesFrame;
 	
 	private JFrame frame;
 	private Container contentPane;
@@ -23,10 +26,12 @@ public class MessageClient {
 	private JTextArea feed;
 	
 	private final Font globalFont = new Font("Avenir", Font.PLAIN, 12);
-	private final Font h2 = new Font("Avenir", Font.PLAIN, 20);
+	private final Font h2 = new Font("Avenir", Font.PLAIN, 15);
 
 	public MessageClient() {
+		System.out.println("Username is: " + username);
 		frame = new JFrame();
+		frame.setTitle(username + "'s Dumb Twitter account");
 		contentPane = frame.getContentPane();
 		contentPane.setLayout(new BoxLayout(contentPane, BoxLayout.Y_AXIS));
 		initTopLabel();
@@ -57,13 +62,14 @@ public class MessageClient {
 		postPanel.add(welcomeLabel);
 		
 		// "write a message"
-		JLabel instr = new JLabel("Write a message!");
+		JLabel instr = new JLabel("Write a message! No more than 140 characters.");
 		instr.setFont(h2);
 		postPanel.add(instr, BorderLayout.NORTH);
 		
 		// field to enter message
 		messageField = new JTextArea();
 		messageField.setEditable(true);
+		messageField.setLineWrap(true);
 		messageField.setFont(globalFont);
 		postPanel.add(messageField, BorderLayout.CENTER);
 		
@@ -72,7 +78,13 @@ public class MessageClient {
 		postButton.setFont(globalFont);
 		postButton.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent arg0) {
-				out.println("POST_" + messageField.getText());
+				if (messageField.getText().length() < 141) {
+					String request = "POST_@" + username + "_" + messageField.getText();
+					out.println(request);
+					messageField.setText("");
+				}
+				else
+					messageField.setText("Only messages less than 140 characters, please!");
 			}
 		});
 		postPanel.add(postButton, BorderLayout.SOUTH);
@@ -101,34 +113,60 @@ public class MessageClient {
 	}
 	
 	private static void initNameAskPanel() {
-		JFrame namesFrame = new JFrame();
+		namesFrame = new JFrame();
 		Container contentPaneName = namesFrame.getContentPane();
+		JPanel splash = new JPanel();
+		splash.setLayout(new BoxLayout(splash, BoxLayout.Y_AXIS));
+		splash.setBorder(BorderFactory.createEmptyBorder(20, 20, 0, 20));
 		
 		// Labels
 		JLabel nameLabel = new JLabel("Enter a unique username");
 		nameLabel.setFont(new Font("Avenir", Font.PLAIN, 20));
 		nameLabel.setAlignmentX(JLabel.CENTER_ALIGNMENT);
+		splash.add(nameLabel);
+		
 		JLabel nameInstr = new JLabel("(Only letters and numbers, no spaces)");
 		nameInstr.setFont(new Font("Avenir", Font.PLAIN, 12));
 		nameInstr.setAlignmentX(JLabel.CENTER_ALIGNMENT);
+		nameInstr.setBorder(BorderFactory.createEmptyBorder(0, 0, 10, 0));
+		splash.add(nameInstr);
+		
+		// JTextField
+		nameField = new JTextField();
+		nameField.setFont(new Font("Avenir", Font.PLAIN, 12));
+		nameField.setMaximumSize(new Dimension(200, 40));
+		nameField.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
+		splash.add(nameField);
+		
+		// button
+		JButton nameButton = new JButton("Create Account");
+		nameButton.setFont(new Font("Avenir", Font.PLAIN, 12));
+		nameButton.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent arg0) {
+				username = nameField.getText();
+				namesFrame.setVisible(false);
+				MessageClient client = new MessageClient();			
+				String ip = "138.110.172.232";	// camille's IP address
+				
+				try {
+					client.connectToServer(ip);
+				} catch (IOException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+			}
+		});
+		nameButton.setAlignmentX(JButton.CENTER_ALIGNMENT);
+		splash.add(nameButton);
+		
+		contentPaneName.add(splash);
 		
 		namesFrame.setSize(400, 200);
 		namesFrame.setVisible(true);
 	}
 	
-	public static void main(String[] args) throws UnknownHostException, IOException {
+	public static void main(String[] args) {
 		initNameAskPanel();
-		
-		//  MessageClient client = new MessageClient();
-		
-		String ip;
-		
-		if (args.length == 0)
-			ip = "127.0.0.1";	// use localhost
-		else
-			ip = args[0];
-		
-		// client.connectToServer(ip);
 	}
 	
 	private void connectToServer(String ip) throws UnknownHostException, IOException {

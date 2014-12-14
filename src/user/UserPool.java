@@ -7,7 +7,7 @@ import publisher.Publisher;
 
 public class UserPool {
 
-	private ArrayList<User> users = new ArrayList<User>();
+	public ArrayList<User> users = new ArrayList<User>();
 	private static UserPool instance;
 	private int userCount = 0;
 	
@@ -48,5 +48,9 @@ public class UserPool {
 	public synchronized void updateUser(User u) {
 		users.add(u);
 		notify();
+	}
+	
+	public ArrayList<User> getAllUsers() {
+		return this.users;
 	}
 }

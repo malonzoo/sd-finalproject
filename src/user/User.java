@@ -33,19 +33,22 @@ public class User implements Runnable {
 	}
 	
 	private void handleConnection() throws IOException {
+		System.out.println("starting to handle request");
 		// Set up the streams to allow 2-way communication with the client.
 		BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
 		PrintWriter out = new PrintWriter(new OutputStreamWriter(socket.getOutputStream()), true);
 		
 		// Get and execute the client's commands.
 		String command = in.readLine();
-		publisher.handlesMessage(command);
-//		while(command != null) {
-//			
-//		}
+		while (command != null) {
+			publisher.handlesMessage(command);
+			command = in.readLine();
+		}
 		
 		in.close();
 		out.close();
+		
+		System.out.println("done handling request");
 	}
 
 	/**
