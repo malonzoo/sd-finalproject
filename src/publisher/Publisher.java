@@ -1,10 +1,11 @@
 package publisher;
 
 import java.awt.*;
+import java.io.*;
 import java.util.*;
 import java.util.List;
-
 import javax.swing.*;
+import user.*;
 
 /**
  * This publisher keeps track of the messages and topics that the MessageServer has
@@ -83,25 +84,61 @@ public class Publisher {
 	 *    c) GETALLSUB: gets a list of all the subscribers in the Message Server
 	 * @param s
 	 */
-	public void handlesMessage(String s) {
-		Message m = parseMessage(s);
-		if (m != null) {
-			messages.add(m);
-			globalFeed.remove(globalMessages);
-			globalMessages = new MessageTableView(messages);
-			globalFeed.add(globalMessages);
-			contentPane.repaint();
-			contentPane.revalidate();
-			contentPane.validate();
+	public void handlesMessage(String s, PrintWriter out, User u) {
+		if ( (s.substring(0, 7)).compareTo("NEWUSER") == 0 ) {
+			topics.add( new Topic( u, s.substring(8, s.length() )) );
+			pushOutAllSubscribers(out);
+		}
+		else {
+			Message m = parseMessage(s, u);
+			if ( m != null) {
+				messages.add(m);
+				globalFeed.remove(globalMessages);
+				globalMessages = new MessageTableView(messages);
+				globalFeed.add(globalMessages);
+				contentPane.repaint();
+				contentPane.revalidate();
+				contentPane.validate();
+				
+				out.write("Message received. Thanks, " + m.getUserID() + "\n");
+				out.flush();
+			}
 		}
 	}
+	
+	private void pushOutAllSubscribers(PrintWriter out) {
+		String toReturn = "ALLSUB_";
+		for (Topic t : topics)
+			toReturn += "@" + t.getUserId();
+		
+		toReturn += "\n";
+		out.write(toReturn);
+		out.flush();
+	}
+	
+//	/**
+//	 * I potentially don't need this
+//	 * @param u
+//	 * @return true if the topic is already in the arraylist of topics
+//	 * @return false if the topic is not yet in the arryalist of topics
+//	 */
+//	private boolean lookThroughTopics(User u) {
+//		Iterator<Topic> i = topics.iterator();
+//		while( i.hasNext() ) {
+//			Topic current = i.next();
+//			if ( current.getThisUser().getID() == u.getID() )
+//				return true;
+//		}
+//		
+//		return false;
+//	}
 	
 	/** 
 	 * TODO: this method takes a message, s, and parses it, creating a new
 	 * Message object. Also adds it to the list of all messages
 	 * @param s
 	 */
-	private Message parseMessage(String s) {
+	private Message parseMessage(String s, User u) {
 		if ( (s.substring(0, 4)).compareTo("POST") == 0 ) {
 			System.out.println(s);
 			
@@ -117,9 +154,8 @@ public class Publisher {
 			
 			String user = s.substring(7-1, i);
 			String message = s.substring(i+1, s.length());
-			System.out.println("user: " + user + ", message: " + message);
 			
-			return new Message(user, message);
+			return new Message(user, message, u);
 		}
 		
 		return null;

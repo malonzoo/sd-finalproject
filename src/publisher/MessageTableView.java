@@ -28,7 +28,7 @@ public class MessageTableView extends JComponent {
 		messageView.setMaximumSize(new Dimension(400, 30));
 		
 		// username
-		JLabel uL = new JLabel(m.getUser());
+		JLabel uL = new JLabel(m.getUserID());
 		uL.setFont(globalFont);
 		messageView.setAlignmentY(CENTER_ALIGNMENT);
 		messageView.add(uL);
@@ -38,8 +38,7 @@ public class MessageTableView extends JComponent {
 		mL.setFont(globalFont);
 		mL.setAlignmentY(CENTER_ALIGNMENT);
 		messageView.add(mL);
-		
-		
+				
 		this.add(messageView);
 	}
 	

@@ -22,6 +22,11 @@ public class MessageClient {
 	private Container contentPane;
 	private JPanel postPanel;
 	private JTextArea messageField;
+	
+	private JPanel subsPanel;
+	private JPanel allUsersPanel = new JPanel();
+	private ArrayList<Integer> startUsersIndex;
+	
 	private JPanel feedPanel;
 	private JTextArea feed;
 	
@@ -29,15 +34,15 @@ public class MessageClient {
 	private final Font h2 = new Font("Avenir", Font.PLAIN, 15);
 
 	public MessageClient() {
-		System.out.println("Username is: " + username);
 		frame = new JFrame();
 		frame.setTitle(username + "'s Dumb Twitter account");
 		contentPane = frame.getContentPane();
 		contentPane.setLayout(new BoxLayout(contentPane, BoxLayout.Y_AXIS));
 		initTopLabel();
 		initPostPanel();
+		initSubscriberPanel();
 		initFeedPanel();
-		
+
 		frame.setSize(400, 600);
 		frame.setVisible(true);
 	}
@@ -48,6 +53,7 @@ public class MessageClient {
 		welcomeLabel.setFont(new Font("Archer", Font.BOLD, 30));
 		welcomeLabel.setAlignmentX(JLabel.CENTER_ALIGNMENT);
 		welcomeLabel.setBorder(BorderFactory.createEmptyBorder(10, 0, 5, 0));
+		welcomeLabel.setBackground(Color.RED);
 		contentPane.add(welcomeLabel);		
 	}
 	
@@ -55,6 +61,7 @@ public class MessageClient {
 		postPanel = new JPanel();
 		postPanel.setMaximumSize(new Dimension(400, 125));
 		postPanel.setLayout(new BorderLayout());
+		postPanel.setBackground(Color.YELLOW);
 		
 		// welcome
 		JLabel welcomeLabel = new JLabel("Welcome to Messager!");
@@ -82,6 +89,7 @@ public class MessageClient {
 					String request = "POST_@" + username + "_" + messageField.getText();
 					out.println(request);
 					messageField.setText("");
+					manageServerResponse(in);
 				}
 				else
 					messageField.setText("Only messages less than 140 characters, please!");
@@ -90,6 +98,32 @@ public class MessageClient {
 		postPanel.add(postButton, BorderLayout.SOUTH);
 		postPanel.setBorder(BorderFactory.createEmptyBorder(10, 20, 0, 20));
 		contentPane.add(postPanel);
+	}
+	
+	private void initSubscriberPanel() {
+		subsPanel = new JPanel();
+		subsPanel.setBackground(Color.BLUE);
+		subsPanel.setMaximumSize(new Dimension(400, 100));
+		subsPanel.setLayout(new BorderLayout());
+		subsPanel.setBorder(BorderFactory.createEmptyBorder(20, 20, 0, 20));
+		
+		// labels
+		JLabel subscriberh1 = new JLabel("All Users");
+		subscriberh1.setFont(h2);
+		subscriberh1.setAlignmentX(JLabel.LEFT_ALIGNMENT);
+		subsPanel.add(subscriberh1, BorderLayout.NORTH);
+		
+		JTextArea subscriberInstr = new JTextArea();
+		subscriberInstr.setText("Toggle the appropriate buttons to follow each user you'd like to follow. Their \nmessages will automatically be posted to your feed when they post messages.");
+		subscriberInstr.setEditable(false);
+		subscriberInstr.setOpaque(false);
+		subscriberInstr.setFont(new Font("Avenir", Font.PLAIN, 10));
+		subsPanel.add(subscriberInstr, BorderLayout.SOUTH);
+		
+		// create panel to put all the subscribers
+		subsPanel.add(allUsersPanel);	
+		
+		contentPane.add(subsPanel);
 	}
 	
 	private void initFeedPanel() {
@@ -146,7 +180,7 @@ public class MessageClient {
 				username = nameField.getText();
 				namesFrame.setVisible(false);
 				MessageClient client = new MessageClient();			
-				String ip = "138.110.172.232";	// camille's IP address
+				String ip = "127.0.0.1";	// change to camille's IP address later
 				
 				try {
 					client.connectToServer(ip);
@@ -173,9 +207,65 @@ public class MessageClient {
 		socket = new Socket(ip, 5000);
 		in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
 		out = new PrintWriter(new OutputStreamWriter(socket.getOutputStream()), true);
+		
+		requestSubscribersList(out);
 	}
 	
 	private void manageServerResponse(BufferedReader in) {
+		try {
+			String nextLine = in.readLine();
+			if ( (nextLine.substring(0, 6)).compareTo("ALLSUB") == 0 )
+				parseSubscribers(nextLine);
+		}
+		catch (IOException e) {
+			e.printStackTrace();
+		}
+	}
+	
+	private void requestSubscribersList(PrintWriter out) {
+		out.println("NEWUSER_" + username);
+		manageServerResponse(in);
+	}
+	
+	private Color createRandomColor() {
+		Random rand = new Random();
+		float r = rand.nextFloat();
+		float g = rand.nextFloat();
+		float b = rand.nextFloat();
+		return new Color(r, g, b);
+	}
+	
+	private void parseSubscribers(String s) {
+		s = s.substring(7, s.length());
+		startUsersIndex = new ArrayList<Integer>();
+		for(int i = 0; i < s.length(); i++)
+			if ((Character.toString(s.charAt(i))).compareTo("@") == 0 )
+				startUsersIndex.add(i);
+		
+		allUsersPanel.setLayout(new BoxLayout(allUsersPanel, BoxLayout.PAGE_AXIS));
+		
+		for(int j = 0; j < startUsersIndex.size(); j++) {
+			JPanel oneUser = new JPanel();
+			oneUser.setLayout(new BorderLayout());
+			JLabel userLabel;
+			if (j < startUsersIndex.size()-1)
+				userLabel = new JLabel( s.substring(startUsersIndex.get(j), startUsersIndex.get(j+1)) );
+			else
+				userLabel = new JLabel( s.substring(startUsersIndex.get(j), s.length()) );
+			
+			userLabel.setFont(globalFont);
+			userLabel.setForeground(createRandomColor());
+			userLabel.setOpaque(false);
+			oneUser.add(userLabel);
+			
+			allUsersPanel.add(oneUser);
+			
+//			ButtonGroup group = new ButtonGroup();
+//			JRadioButton yesSub = new JRadioButton("Y");
+//			JRadioButton noSub = new JRadioButton("N");
+		}
+		
 		
 	}
+	
 }

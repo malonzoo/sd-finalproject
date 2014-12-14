@@ -41,7 +41,7 @@ public class User implements Runnable {
 		// Get and execute the client's commands.
 		String command = in.readLine();
 		while (command != null) {
-			publisher.handlesMessage(command);
+			publisher.handlesMessage(command, out, this);
 			command = in.readLine();
 		}
 		
