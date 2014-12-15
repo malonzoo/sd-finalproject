@@ -1,15 +1,18 @@
 package user;
 
-import java.io.File;
-import java.util.ArrayList;
+import java.io.*;
+import java.net.*;
+import java.util.*;
 
 import publisher.Publisher;
 
 public class UserPool {
 
-	public ArrayList<User> users = new ArrayList<User>();
+	private ArrayList<User> users = new ArrayList<User>();
+	private ArrayList<Thread> threads = new ArrayList<Thread>();
 	private static UserPool instance;
 	private int userCount = 0;
+	private String lastRequest = "";
 	
 	/**
 	 * Can only have one pool of users
@@ -39,9 +42,17 @@ public class UserPool {
 	 * @return 
 	 */
 	public synchronized User addUser(Publisher p) {
+		// Runnables
 		User u = new User(userCount, p);
+		users.add(u);
 		userCount++;
-		(new Thread(u)).start();
+		
+		// Thread
+		Thread t = new Thread(u);
+		u.setThread(t);
+		t.start();
+		threads.add(t);
+		
 		return u;
 	}
 	
@@ -52,5 +63,17 @@ public class UserPool {
 	
 	public ArrayList<User> getAllUsers() {
 		return this.users;
+	}
+	
+	public void setLastRequest(String s) {
+		this.lastRequest = s;
+	}
+	
+	public String getLastRequest() {
+		return this.lastRequest;
+	}
+	
+	public ArrayList<Thread> getAllThreads() {
+		return this.threads;
 	}
 }

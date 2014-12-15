@@ -1,5 +1,7 @@
 package publisher;
 
+import java.sql.Timestamp;
+
 import user.User;
 
 public class Message {

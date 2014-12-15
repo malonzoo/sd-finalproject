@@ -8,13 +8,14 @@ import user.User;
 import user.UserPool;
 
 public class MessageServer {	
-	private static Publisher pub = new Publisher();
+	private static Publisher pub;
 	
 	public MessageServer() throws IOException {
 		
 		// attach the server to port 5000
 		ServerSocket serverSocket = new ServerSocket(5000);
 		UserPool pool = UserPool.getInstance();
+		pub = new Publisher(pool);
 		
 		// wait forever for client connections
 		while (true) {
@@ -26,7 +27,6 @@ public class MessageServer {
 			}
 			else {
 				u.setSocket(s);
-				System.out.println("Getting here");
 			}
 		}
 	}

@@ -25,10 +25,10 @@ public class MessageTableView extends JComponent {
 	private void addToTable(Message m) {
 		JPanel messageView = new JPanel();
 		messageView.setLayout(new GridLayout(1, 2));
-		messageView.setMaximumSize(new Dimension(400, 30));
+		messageView.setMaximumSize(new Dimension(400, 25));
 		
 		// username
-		JLabel uL = new JLabel(m.getUserID());
+		JLabel uL = new JLabel("@" + m.getUserID());
 		uL.setFont(globalFont);
 		messageView.setAlignmentY(CENTER_ALIGNMENT);
 		messageView.add(uL);

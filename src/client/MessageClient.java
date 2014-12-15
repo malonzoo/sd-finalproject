@@ -6,9 +6,11 @@ import java.io.*;
 import java.net.*;
 import java.util.*;
 
+import javax.imageio.ImageIO;
 import javax.swing.*;
 
-public class MessageClient {
+public class MessageClient implements Runnable {
+	private boolean start = false;
 	private Socket socket;
 	private BufferedReader in;
 	private PrintWriter out;
@@ -23,12 +25,14 @@ public class MessageClient {
 	private JPanel postPanel;
 	private JTextArea messageField;
 	
-	private JPanel subsPanel;
 	private JPanel allUsersPanel = new JPanel();
+	private JPanel subsPanel = new JPanel();
 	private ArrayList<Integer> startUsersIndex;
+	private HashSet<String> allUsers = new HashSet<String>();
+	private HashSet<JPanel> listAllUsersPanels = new HashSet<JPanel>();
 	
 	private JPanel feedPanel;
-	private JTextArea feed;
+	private JPanel feed;
 	
 	private final Font globalFont = new Font("Avenir", Font.PLAIN, 12);
 	private final Font h2 = new Font("Avenir", Font.PLAIN, 15);
@@ -38,6 +42,7 @@ public class MessageClient {
 		frame.setTitle(username + "'s Dumb Twitter account");
 		contentPane = frame.getContentPane();
 		contentPane.setLayout(new BoxLayout(contentPane, BoxLayout.Y_AXIS));
+		initRefresh();
 		initTopLabel();
 		initPostPanel();
 		initSubscriberPanel();
@@ -47,13 +52,35 @@ public class MessageClient {
 		frame.setVisible(true);
 	}
 	
+	private void initRefresh() {
+		JButton refreshButton = new JButton("Refresh");
+		refreshButton.setFont(globalFont);
+		refreshButton.setMaximumSize(new Dimension(400, 20));
+		refreshButton.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent arg0) {
+				try {
+					checkIfAnythingSent();
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
+				
+				System.out.println("client.refreshing");
+				out.println("SUBUPD");
+				run();
+				
+				out.println("FEEDUPD@" + username);
+				run();
+			}
+		});
+		contentPane.add(refreshButton);
+	}
+	
 	private void initTopLabel() {
 		// welcome label
 		JLabel welcomeLabel = new JLabel("Welcome to Messager!");
 		welcomeLabel.setFont(new Font("Archer", Font.BOLD, 30));
 		welcomeLabel.setAlignmentX(JLabel.CENTER_ALIGNMENT);
 		welcomeLabel.setBorder(BorderFactory.createEmptyBorder(10, 0, 5, 0));
-		welcomeLabel.setBackground(Color.RED);
 		contentPane.add(welcomeLabel);		
 	}
 	
@@ -61,7 +88,6 @@ public class MessageClient {
 		postPanel = new JPanel();
 		postPanel.setMaximumSize(new Dimension(400, 125));
 		postPanel.setLayout(new BorderLayout());
-		postPanel.setBackground(Color.YELLOW);
 		
 		// welcome
 		JLabel welcomeLabel = new JLabel("Welcome to Messager!");
@@ -87,9 +113,10 @@ public class MessageClient {
 			public void actionPerformed(ActionEvent arg0) {
 				if (messageField.getText().length() < 141) {
 					String request = "POST_@" + username + "_" + messageField.getText();
-					out.println(request);
+					if(messageField.getText().compareTo("") != 0) {
+						out.println(request);
+					}
 					messageField.setText("");
-					manageServerResponse(in);
 				}
 				else
 					messageField.setText("Only messages less than 140 characters, please!");
@@ -102,7 +129,6 @@ public class MessageClient {
 	
 	private void initSubscriberPanel() {
 		subsPanel = new JPanel();
-		subsPanel.setBackground(Color.BLUE);
 		subsPanel.setMaximumSize(new Dimension(400, 100));
 		subsPanel.setLayout(new BorderLayout());
 		subsPanel.setBorder(BorderFactory.createEmptyBorder(20, 20, 0, 20));
@@ -128,7 +154,7 @@ public class MessageClient {
 	
 	private void initFeedPanel() {
 		feedPanel = new JPanel();
-		feedPanel.setMaximumSize(new Dimension(400, 400));
+		feedPanel.setMaximumSize(new Dimension(400, 300));
 		feedPanel.setLayout(new BorderLayout());
 		feedPanel.setBorder(BorderFactory.createEmptyBorder(50, 20, 0, 20));
 		
@@ -138,10 +164,12 @@ public class MessageClient {
 		feedPanel.add(feedLabel, BorderLayout.NORTH);
 		
 		// JPanel for Feed
-		feed = new JTextArea();
-		JScrollPane scrollpane = new JScrollPane(feed);
-		scrollpane.setBorder(null);
-		feedPanel.add(scrollpane, BorderLayout.CENTER);
+		feed = new JPanel();
+		feed.setLayout(new BoxLayout(feed, BoxLayout.Y_AXIS));
+		JScrollPane scrollerpane = new JScrollPane(feed);
+		scrollerpane.setBorder(BorderFactory.createEmptyBorder());
+		scrollerpane.setOpaque(false);
+		feedPanel.add(scrollerpane, BorderLayout.CENTER);
 		
 		contentPane.add(feedPanel);
 	}
@@ -208,25 +236,21 @@ public class MessageClient {
 		in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
 		out = new PrintWriter(new OutputStreamWriter(socket.getOutputStream()), true);
 		
-		requestSubscribersList(out);
+		(new Thread(this)).start();
 	}
 	
-	private void manageServerResponse(BufferedReader in) {
-		try {
-			String nextLine = in.readLine();
-			if ( (nextLine.substring(0, 6)).compareTo("ALLSUB") == 0 )
-				parseSubscribers(nextLine);
-		}
-		catch (IOException e) {
-			e.printStackTrace();
-		}
-	}
-	
-	private void requestSubscribersList(PrintWriter out) {
+	/**
+	 * 
+	 * @param out
+	 */
+	private void newUser(PrintWriter out) {
 		out.println("NEWUSER_" + username);
-		manageServerResponse(in);
 	}
 	
+	/**
+	 * 
+	 * @return
+	 */
 	private Color createRandomColor() {
 		Random rand = new Random();
 		float r = rand.nextFloat();
@@ -235,6 +259,10 @@ public class MessageClient {
 		return new Color(r, g, b);
 	}
 	
+	/**
+	 * 
+	 * @param s
+	 */
 	private void parseSubscribers(String s) {
 		s = s.substring(7, s.length());
 		startUsersIndex = new ArrayList<Integer>();
@@ -243,29 +271,182 @@ public class MessageClient {
 				startUsersIndex.add(i);
 		
 		allUsersPanel.setLayout(new BoxLayout(allUsersPanel, BoxLayout.PAGE_AXIS));
+		allUsersPanel.setMaximumSize(new Dimension(400, 75));
 		
 		for(int j = 0; j < startUsersIndex.size(); j++) {
 			JPanel oneUser = new JPanel();
 			oneUser.setLayout(new BorderLayout());
+			oneUser.setMaximumSize(new Dimension(200, 25));
 			JLabel userLabel;
-			if (j < startUsersIndex.size()-1)
+			if (j < startUsersIndex.size()-1) {
+				allUsers.add( s.substring(startUsersIndex.get(j), startUsersIndex.get(j+1)) );				
 				userLabel = new JLabel( s.substring(startUsersIndex.get(j), startUsersIndex.get(j+1)) );
-			else
+			}
+			else {
+				allUsers.add( s.substring(startUsersIndex.get(j), s.length()) );
 				userLabel = new JLabel( s.substring(startUsersIndex.get(j), s.length()) );
-			
+			}
+							
 			userLabel.setFont(globalFont);
 			userLabel.setForeground(createRandomColor());
 			userLabel.setOpaque(false);
 			oneUser.add(userLabel);
 			
-			allUsersPanel.add(oneUser);
+			// add listener to this JPanel
+			listAllUsersPanels.add(oneUser);
+			addSubscribeListener(oneUser, userLabel.getText());
 			
-//			ButtonGroup group = new ButtonGroup();
-//			JRadioButton yesSub = new JRadioButton("Y");
-//			JRadioButton noSub = new JRadioButton("N");
+			allUsersPanel.add(oneUser);
 		}
+	}
+	
+	private void refSubscribers(String s) {
+		System.out.println("getting to refresh");
+		s = s.substring(7, s.length());
+		startUsersIndex = new ArrayList<Integer>();
+		for(int i = 0; i < s.length(); i++)
+			if ((Character.toString(s.charAt(i))).compareTo("@") == 0 )
+				startUsersIndex.add(i);
 		
+		System.out.println("startUsersIndex size: " + startUsersIndex);
 		
+		for(int j = 0; j < startUsersIndex.size(); j++) {
+			if (j < startUsersIndex.size()-1) {
+				if( allUsers.add( s.substring(startUsersIndex.get(j), startUsersIndex.get(j+1))) ) 
+					add1User( s.substring(startUsersIndex.get(j), startUsersIndex.get(j+1)) );
+			}
+			else {
+				if( allUsers.add( s.substring(startUsersIndex.get(j), s.length())) ) 
+					add1User( s.substring(startUsersIndex.get(j), s.length()) );
+			}
+		}
+		subsPanel.revalidate();
+	}
+	
+	private void add1User(String s) {
+		System.out.println("when are we getting here: " + s);
+		
+		JPanel oneUser = new JPanel();
+			   oneUser.setLayout(new BorderLayout());
+		       oneUser.setMaximumSize(new Dimension(200, 25));
+		
+		JLabel userLabel = new JLabel( s );
+			   userLabel.setFont(globalFont);
+			   userLabel.setForeground(createRandomColor());
+			   userLabel.setOpaque(false);
+		
+		oneUser.add(userLabel);	
+		addSubscribeListener(oneUser, userLabel.getText());
+		listAllUsersPanels.add(oneUser);
+		allUsersPanel.add(oneUser);
+	}
+	
+	/**
+	 * 
+	 * @param p JPanel to add the listener to
+	 * @param u User to subscribe to
+	 */
+	private void addSubscribeListener(JPanel p, String u) {
+		final String finalU = u;
+		p.addMouseListener(new MouseListener() {
+			public void mouseClicked(MouseEvent e) {
+				System.out.println("getting to this click: " + "SUBSCRIBE_@" + username + ":" + finalU);
+				out.println("SUBSCRIBE_@" + username + ":" + finalU);
+				run();
+			}
+
+			// dont care about these, sry
+			public void mousePressed(MouseEvent e) {}
+			public void mouseReleased(MouseEvent e) {}
+			public void mouseEntered(MouseEvent e) {}
+			public void mouseExited(MouseEvent e) {}
+
+		});
+	}
+
+	public void run() {
+		String nextLine;
+		if (!start)	{
+			System.out.println("client.run.start: " + start);
+			newUser(out);
+			try {
+				nextLine = in.readLine();
+				System.out.println("back to client: " + nextLine);
+				if ( (nextLine.substring(0, 6)).compareTo("ALLSUB") == 0 )
+					parseSubscribers(nextLine);
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+			start = true;
+		}
+		else{
+			System.out.println("client.run.else");
+			try {
+				nextLine = in.readLine();
+				System.out.println("nextLine: " + nextLine);
+				while (nextLine != null) {
+					System.out.println("back to client: " + nextLine);
+					if ( (nextLine.substring(0, 6)).compareTo("ALLSUB") == 0 ) {
+						System.out.println("client size: allsub success");
+						refSubscribers(nextLine);
+						nextLine = null;
+					}
+					else if( (nextLine.substring(0, 6)).compareTo("BADSUB") == 0  ) {
+						updateSubscribeListBad(nextLine);
+						nextLine = null;
+					}
+					else if( (nextLine.substring(0, 7)).compareTo("GOODSUB") == 0  ) {
+						updateSubscribeList(nextLine);
+						nextLine = null;
+					}
+					else {
+						System.out.println(nextLine);
+						nextLine = null;
+					}
+						
+				}
+			}
+			catch (IOException e) {
+				e.printStackTrace();
+			}		
+		}
+	}
+	
+	private void updateSubscribeList(String s) {
+		System.out.println("Successful subscription!");
+	}
+	
+	private void updateSubscribeListBad(String s) {
+		System.out.println("Cannot subscribe to yourself!");
+	}
+	
+	private void checkIfAnythingSent() throws IOException {
+		System.out.println("client.getting to checkIfAnythingSent");
+		while( in.ready() ){
+			String l = in.readLine();
+			if (l != null) {
+				String user = l.substring(9, l.indexOf(":"));
+				String message = l.substring(l.indexOf(":") + 1, l.length());
+				
+				JPanel newMessage = new JPanel();
+				newMessage.setMaximumSize(new Dimension(400, 25));
+				newMessage.setLayout(new BorderLayout());
+				
+				JLabel userLabel = new JLabel("@" + user + ":");
+				userLabel.setFont(globalFont);
+				userLabel.setForeground(createRandomColor());
+				
+				JLabel messageLabel = new JLabel(message);
+				messageLabel.setFont(globalFont);
+				
+				newMessage.add(userLabel, BorderLayout.WEST);
+				newMessage.add(messageLabel, BorderLayout.CENTER);
+				
+				feed.add(newMessage);
+				frame.revalidate();
+			}				
+		}
 	}
 	
 }
