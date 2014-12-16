@@ -1,16 +1,21 @@
-package publisher;
+package publisher.view;
 
 import java.awt.*;
 import java.util.ArrayList;
 
 import javax.swing.*;
 
+import publisher.Message;
+
+/**
+ * View of the table of messages on the Publisher GUI
+ * @author camillemalonzo
+ *
+ */
 public class MessageTableView extends JComponent {
 	
-	private ArrayList<Message> messages;
-	
+	private ArrayList<Message> messages; // messages to view	
 	private final Font globalFont = new Font("Avenir", Font.PLAIN, 12);
-	private final Font globalFontB = new Font("Avenir", Font.BOLD, 12);
 	
 	public MessageTableView(ArrayList<Message> m) {
 		this.messages = m;

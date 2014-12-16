@@ -5,17 +5,23 @@ import java.awt.event.*;
 import java.io.*;
 import java.net.*;
 import java.util.*;
-
-import javax.imageio.ImageIO;
 import javax.swing.*;
 
+/**
+ * Message Client. This is the client side GUI and program that anyone 
+ * can run on their computer and connect to the Message Server
+ * @author camillemalonzo
+ *
+ */
 public class MessageClient implements Runnable {
-	private boolean start = false;
-	private Socket socket;
-	private BufferedReader in;
-	private PrintWriter out;
+	private boolean start = false;	// for sending a call to the server to open a socket
+	private Socket socket;	// socket to connect to the MessageServer
+	private BufferedReader in;	// stream coming in, with Strings coming from the MessageServer 
+	private PrintWriter out;	// stream going to the MessageServer
 	
-	private ArrayList feedMessages;
+	/**
+	 * GUI Elements
+	 */
 	public static String username;
 	public static JTextField nameField;
 	public static JFrame namesFrame;
@@ -36,10 +42,14 @@ public class MessageClient implements Runnable {
 	
 	private final Font globalFont = new Font("Avenir", Font.PLAIN, 12);
 	private final Font h2 = new Font("Avenir", Font.PLAIN, 15);
+	private HashMap<String,Color> colorCode = new HashMap<String, Color>(); // color key of usernames
 
+	/**
+	 * MessageClient Object that opens up the GUI element of the messager
+	 */
 	public MessageClient() {
 		frame = new JFrame();
-		frame.setTitle(username + "'s Dumb Twitter account");
+		frame.setTitle(username + "'s Messager account");
 		contentPane = frame.getContentPane();
 		contentPane.setLayout(new BoxLayout(contentPane, BoxLayout.Y_AXIS));
 		initRefresh();
@@ -48,10 +58,13 @@ public class MessageClient implements Runnable {
 		initSubscriberPanel();
 		initFeedPanel();
 
-		frame.setSize(400, 600);
+		frame.setSize(400, 700);
 		frame.setVisible(true);
 	}
 	
+	/**
+	 * Initializes the GUI element of the refresh button
+	 */
 	private void initRefresh() {
 		JButton refreshButton = new JButton("Refresh");
 		refreshButton.setFont(globalFont);
@@ -59,42 +72,46 @@ public class MessageClient implements Runnable {
 		refreshButton.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent arg0) {
 				try {
+					// checks if the server sent anything to this client
 					checkIfAnythingSent();
 				} catch (IOException e) {
 					e.printStackTrace();
 				}
 				
-				System.out.println("client.refreshing");
+				// sends a request to the server to update the subscriber list
 				out.println("SUBUPD");
-				run();
-				
-				out.println("FEEDUPD@" + username);
-				run();
+				run(); // gets the response
 			}
 		});
 		contentPane.add(refreshButton);
 	}
 	
+	/**
+	 * Initializes the GUI element of the label of the program. A simple welcome
+	 */
 	private void initTopLabel() {
 		// welcome label
 		JLabel welcomeLabel = new JLabel("Welcome to Messager!");
-		welcomeLabel.setFont(new Font("Archer", Font.BOLD, 30));
+		welcomeLabel.setFont(new Font("Avenir", Font.BOLD, 30));
 		welcomeLabel.setAlignmentX(JLabel.CENTER_ALIGNMENT);
 		welcomeLabel.setBorder(BorderFactory.createEmptyBorder(10, 0, 5, 0));
 		contentPane.add(welcomeLabel);		
 	}
 	
+	/**
+	 * Initializes the GUI element to post messages to the User's feed of messages
+	 */
 	private void initPostPanel() {
 		postPanel = new JPanel();
 		postPanel.setMaximumSize(new Dimension(400, 125));
 		postPanel.setLayout(new BorderLayout());
 		
-		// welcome
+		// welcome label
 		JLabel welcomeLabel = new JLabel("Welcome to Messager!");
-		welcomeLabel.setFont(new Font("Archer", Font.BOLD, 30));
+		welcomeLabel.setFont(new Font("Avenir", Font.BOLD, 30));
 		postPanel.add(welcomeLabel);
 		
-		// "write a message"
+		// "write a message" label
 		JLabel instr = new JLabel("Write a message! No more than 140 characters.");
 		instr.setFont(h2);
 		postPanel.add(instr, BorderLayout.NORTH);
@@ -112,6 +129,7 @@ public class MessageClient implements Runnable {
 		postButton.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent arg0) {
 				if (messageField.getText().length() < 141) {
+					// sends a request to post the message
 					String request = "POST_@" + username + "_" + messageField.getText();
 					if(messageField.getText().compareTo("") != 0) {
 						out.println(request);
@@ -127,9 +145,12 @@ public class MessageClient implements Runnable {
 		contentPane.add(postPanel);
 	}
 	
+	/**
+	 * Initializes the GUI element to show all the users with accounts
+	 */
 	private void initSubscriberPanel() {
 		subsPanel = new JPanel();
-		subsPanel.setMaximumSize(new Dimension(400, 100));
+		subsPanel.setMaximumSize(new Dimension(400, 150));
 		subsPanel.setLayout(new BorderLayout());
 		subsPanel.setBorder(BorderFactory.createEmptyBorder(20, 20, 0, 20));
 		
@@ -152,6 +173,10 @@ public class MessageClient implements Runnable {
 		contentPane.add(subsPanel);
 	}
 	
+	/**
+	 * Initializes the GUI element that shows the person's feed of messages
+	 * This feed will only display the messages of Users the person is subscribed to
+	 */
 	private void initFeedPanel() {
 		feedPanel = new JPanel();
 		feedPanel.setMaximumSize(new Dimension(400, 300));
@@ -174,6 +199,9 @@ public class MessageClient implements Runnable {
 		contentPane.add(feedPanel);
 	}
 	
+	/**
+	 * Initializes the GUI element that at the start of the program, asks the person what their username is
+	 */
 	private static void initNameAskPanel() {
 		namesFrame = new JFrame();
 		Container contentPaneName = namesFrame.getContentPane();
@@ -187,7 +215,7 @@ public class MessageClient implements Runnable {
 		nameLabel.setAlignmentX(JLabel.CENTER_ALIGNMENT);
 		splash.add(nameLabel);
 		
-		JLabel nameInstr = new JLabel("(Only letters and numbers, no spaces)");
+		JLabel nameInstr = new JLabel("(Only letters and numbers, please.)");
 		nameInstr.setFont(new Font("Avenir", Font.PLAIN, 12));
 		nameInstr.setAlignmentX(JLabel.CENTER_ALIGNMENT);
 		nameInstr.setBorder(BorderFactory.createEmptyBorder(0, 0, 10, 0));
@@ -227,10 +255,20 @@ public class MessageClient implements Runnable {
 		namesFrame.setVisible(true);
 	}
 	
+	/**
+	 * Starts the program by asking the user to enter a username
+	 * @param args
+	 */
 	public static void main(String[] args) {
 		initNameAskPanel();
 	}
 	
+	/**
+	 * Connects to the server of the passed ip
+	 * @param ip String of the ip address of the server
+	 * @throws UnknownHostException
+	 * @throws IOException
+	 */
 	private void connectToServer(String ip) throws UnknownHostException, IOException {
 		socket = new Socket(ip, 5000);
 		in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
@@ -240,7 +278,7 @@ public class MessageClient implements Runnable {
 	}
 	
 	/**
-	 * 
+	 * Creates a new user by sending a request to the server
 	 * @param out
 	 */
 	private void newUser(PrintWriter out) {
@@ -248,7 +286,7 @@ public class MessageClient implements Runnable {
 	}
 	
 	/**
-	 * 
+	 * Create a random color
 	 * @return
 	 */
 	private Color createRandomColor() {
@@ -260,18 +298,21 @@ public class MessageClient implements Runnable {
 	}
 	
 	/**
-	 * 
+	 * At start of the program, parses the users at the start of the program
+	 * and updates the GUI element of the list of subscribers 
 	 * @param s
 	 */
 	private void parseSubscribers(String s) {
+		// parses the string that was sent to the client from the server
 		s = s.substring(7, s.length());
 		startUsersIndex = new ArrayList<Integer>();
 		for(int i = 0; i < s.length(); i++)
 			if ((Character.toString(s.charAt(i))).compareTo("@") == 0 )
 				startUsersIndex.add(i);
 		
-		allUsersPanel.setLayout(new BoxLayout(allUsersPanel, BoxLayout.PAGE_AXIS));
-		allUsersPanel.setMaximumSize(new Dimension(400, 75));
+		// initialize the GUI element
+		// allUsersPanel.setLayout(new BoxLayout(allUsersPanel, BoxLayout.PAGE_AXIS));
+		allUsersPanel.setMaximumSize(new Dimension(400, 100));
 		
 		for(int j = 0; j < startUsersIndex.size(); j++) {
 			JPanel oneUser = new JPanel();
@@ -288,7 +329,9 @@ public class MessageClient implements Runnable {
 			}
 							
 			userLabel.setFont(globalFont);
-			userLabel.setForeground(createRandomColor());
+			Color thisColor = createRandomColor();
+			colorCode.put(userLabel.getText(), thisColor);
+			userLabel.setForeground(thisColor);
 			userLabel.setOpaque(false);
 			oneUser.add(userLabel);
 			
@@ -300,16 +343,19 @@ public class MessageClient implements Runnable {
 		}
 	}
 	
+	/**
+	 * Updates the list of subscribers
+	 * @param s
+	 */
 	private void refSubscribers(String s) {
-		System.out.println("getting to refresh");
+		// parse the request sent from the server
 		s = s.substring(7, s.length());
 		startUsersIndex = new ArrayList<Integer>();
 		for(int i = 0; i < s.length(); i++)
 			if ((Character.toString(s.charAt(i))).compareTo("@") == 0 )
 				startUsersIndex.add(i);
 		
-		System.out.println("startUsersIndex size: " + startUsersIndex);
-		
+		// update the GUI
 		for(int j = 0; j < startUsersIndex.size(); j++) {
 			if (j < startUsersIndex.size()-1) {
 				if( allUsers.add( s.substring(startUsersIndex.get(j), startUsersIndex.get(j+1))) ) 
@@ -323,16 +369,20 @@ public class MessageClient implements Runnable {
 		subsPanel.revalidate();
 	}
 	
+	/**
+	 * Adds one User to the list of Users/subscribers + its appropriate GUI element
+	 * @param s String, the username of the User to add
+	 */
 	private void add1User(String s) {
-		System.out.println("when are we getting here: " + s);
 		
 		JPanel oneUser = new JPanel();
 			   oneUser.setLayout(new BorderLayout());
-		       oneUser.setMaximumSize(new Dimension(200, 25));
+		       oneUser.setMaximumSize(new Dimension(100, 25));
 		
 		JLabel userLabel = new JLabel( s );
-			   userLabel.setFont(globalFont);
-			   userLabel.setForeground(createRandomColor());
+		Color thisColor = createRandomColor();
+		colorCode.put(userLabel.getText(), thisColor);
+			   userLabel.setForeground(thisColor);
 			   userLabel.setOpaque(false);
 		
 		oneUser.add(userLabel);	
@@ -342,7 +392,7 @@ public class MessageClient implements Runnable {
 	}
 	
 	/**
-	 * 
+	 * Add a listener to a User JPanel 
 	 * @param p JPanel to add the listener to
 	 * @param u User to subscribe to
 	 */
@@ -350,7 +400,6 @@ public class MessageClient implements Runnable {
 		final String finalU = u;
 		p.addMouseListener(new MouseListener() {
 			public void mouseClicked(MouseEvent e) {
-				System.out.println("getting to this click: " + "SUBSCRIBE_@" + username + ":" + finalU);
 				out.println("SUBSCRIBE_@" + username + ":" + finalU);
 				run();
 			}
@@ -364,89 +413,93 @@ public class MessageClient implements Runnable {
 		});
 	}
 
+	/**
+	 * Manages the stream of information between this client and the server
+	 */
 	public void run() {
 		String nextLine;
 		if (!start)	{
-			System.out.println("client.run.start: " + start);
 			newUser(out);
 			try {
 				nextLine = in.readLine();
-				System.out.println("back to client: " + nextLine);
 				if ( (nextLine.substring(0, 6)).compareTo("ALLSUB") == 0 )
 					parseSubscribers(nextLine);
-			} catch (IOException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
+			} catch (IOException e) {	e.printStackTrace();	}
 			start = true;
 		}
 		else{
-			System.out.println("client.run.else");
 			try {
 				nextLine = in.readLine();
-				System.out.println("nextLine: " + nextLine);
 				while (nextLine != null) {
-					System.out.println("back to client: " + nextLine);
-					if ( (nextLine.substring(0, 6)).compareTo("ALLSUB") == 0 ) {
-						System.out.println("client size: allsub success");
+					if ( (nextLine.substring(0, 6)).compareTo("ALLSUB") == 0 )
 						refSubscribers(nextLine);
-						nextLine = null;
-					}
-					else if( (nextLine.substring(0, 6)).compareTo("BADSUB") == 0  ) {
+					else if( (nextLine.substring(0, 6)).compareTo("BADSUB") == 0  )
 						updateSubscribeListBad(nextLine);
-						nextLine = null;
-					}
-					else if( (nextLine.substring(0, 7)).compareTo("GOODSUB") == 0  ) {
+					else if( (nextLine.substring(0, 7)).compareTo("GOODSUB") == 0  )
 						updateSubscribeList(nextLine);
-						nextLine = null;
-					}
-					else {
-						System.out.println(nextLine);
-						nextLine = null;
-					}
-						
+					else
+						System.out.println("ERROR. RECEIVED:" + nextLine);
+					
+					nextLine = null;	
 				}
 			}
-			catch (IOException e) {
-				e.printStackTrace();
-			}		
+			catch (IOException e) {	e.printStackTrace(); }		
 		}
 	}
 	
+	/**
+	 * Updates the GUI of the subscribers (sets the username as dark gray to indicate subscriptions)
+	 * @param s
+	 */
 	private void updateSubscribeList(String s) {
-		System.out.println("Successful subscription!");
+		// get the user subscribed to successfully
+		String subscribed = s.substring(8, s.length());
+		for (JPanel p : listAllUsersPanels) {
+			if ((((JLabel)(p.getComponent(0))).getText()).compareTo("@" + subscribed) == 0 )
+				// set the color to gray
+				(p.getComponent(0)).setForeground(Color.DARK_GRAY);
+		}		
 	}
 	
+	/**
+	 * A User cannot subscribe to itself
+	 * @param s
+	 */
 	private void updateSubscribeListBad(String s) {
 		System.out.println("Cannot subscribe to yourself!");
 	}
 	
+	/**
+	 * Check if any messages were published to any of the topics this User is subscribed to
+	 * @throws IOException
+	 */
 	private void checkIfAnythingSent() throws IOException {
-		System.out.println("client.getting to checkIfAnythingSent");
 		while( in.ready() ){
 			String l = in.readLine();
 			if (l != null) {
-				String user = l.substring(9, l.indexOf(":"));
-				String message = l.substring(l.indexOf(":") + 1, l.length());
+				if (l.length() >= 9 && l.substring(0, 7).compareTo("NEWMESS") == 0) {
+					// update the GUI with the new message
+					String user = l.substring(9, l.indexOf(":"));
+					String message = l.substring(l.indexOf(":") + 1, l.length());
 				
-				JPanel newMessage = new JPanel();
-				newMessage.setMaximumSize(new Dimension(400, 25));
-				newMessage.setLayout(new BorderLayout());
+					JPanel newMessage = new JPanel();
+					newMessage.setMaximumSize(new Dimension(400, 25));
+					newMessage.setLayout(new BorderLayout());
 				
-				JLabel userLabel = new JLabel("@" + user + ":");
-				userLabel.setFont(globalFont);
-				userLabel.setForeground(createRandomColor());
+					JLabel userLabel = new JLabel("@" + user + ":");
+					userLabel.setFont(globalFont);
+					userLabel.setForeground(colorCode.get("@" + user));
 				
-				JLabel messageLabel = new JLabel(message);
-				messageLabel.setFont(globalFont);
+					JLabel messageLabel = new JLabel(message);
+					messageLabel.setFont(globalFont);
 				
-				newMessage.add(userLabel, BorderLayout.WEST);
-				newMessage.add(messageLabel, BorderLayout.CENTER);
+					newMessage.add(userLabel, BorderLayout.WEST);
+					newMessage.add(messageLabel, BorderLayout.CENTER);
 				
-				feed.add(newMessage);
-				frame.revalidate();
+					feed.add(newMessage);
+					frame.revalidate();
+				}
 			}				
 		}
-	}
-	
+	}	
 }

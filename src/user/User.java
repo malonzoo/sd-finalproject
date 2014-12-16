@@ -2,21 +2,28 @@ package user;
 
 import java.io.*;
 import java.net.*;
-import java.util.*;
+import publisher.*;
 
-import publisher.Message;
-import publisher.Publisher;
-import publisher.Topic;
-
+/**
+ * User object that is a runnable on the server side
+ * @author camillemalonzo
+ *
+ */
 public class User implements Runnable {
 	
-	private Socket socket;
-	private final int userID;
-	private Publisher publisher;
-	private BufferedReader in;
-	private PrintWriter out;
-	private Thread thread;
+	/** server instances */
+	private Socket socket; // the socket of this User
+	private final int userID; // this User's unique userID
+	private Publisher publisher; // the publisher that this User talks to
+	private BufferedReader in; // this User's stream from a client
+	private PrintWriter out; // this Users stream to a client
+	private Thread thread; // this thread
 	
+	/**
+	 * Initialize a new User
+	 * @param id : username string of the User on the client side
+	 * @param p : the corresponding publisher
+	 */
 	public User(int id, Publisher p) {
 		this.userID = id;
 		this.publisher = p;
@@ -30,6 +37,10 @@ public class User implements Runnable {
 		return userID;
 	}
 	
+	/**
+	 * Set socket for this User
+	 * @param s
+	 */
 	public synchronized void setSocket(Socket s) {
 		if (socket != null) {
 			throw new IllegalStateException("User is already handling a request");
@@ -38,6 +49,10 @@ public class User implements Runnable {
 		notify();
 	}
 	
+	/**
+	 * Handle the connection between the corresponding client
+	 * @throws IOException
+	 */
 	private void handleConnection() throws IOException {
 		// Set up the streams to allow 2-way communication with the client.
 		in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
@@ -49,12 +64,10 @@ public class User implements Runnable {
 				
 		// Get and execute the client's commands.
 		String command = in.readLine();
-		System.out.println("server.reading command: " + command);
 		while (command != null) {
 			Topic t = publisher.handlesMessage(command, out, this);
 			if( t != null ){
 				// if we get here, this means there is a Topic to be flushed
-				System.out.println("server.user.topic is gonna flush");
 				// get the message to push
 				Message m = t.flushMessage();
 				
@@ -62,7 +75,6 @@ public class User implements Runnable {
 				for( String uString : t.getAllSubsList()  ) {
 					// get the corresponding User Int Id
 					int uIntId = publisher.getUserKey().get(uString);
-					System.out.println("server.user.topic uReceiver: " + uIntId + ", message: " + m.getMessage());
 					thread.interrupt();
 					(publisher.getPool().getAllUsers().get(uIntId)).getOut().println( "NEWMESS_@" + m.getUserID() + ":" + m.getMessage());
 				}
@@ -102,17 +114,18 @@ public class User implements Runnable {
 				
 	}
 	
-//	/**
-//	 * TODO: Execute an individual command.
-//	 */
-//	private void execute() {
-//		
-//	}
-	
+	/**
+	 * Get this Users stream to a client
+	 * @return this Users stream to a client
+	 */
 	public PrintWriter getOut() {
 		return this.out;
 	}
 	
+	/**
+	 * Get this thread
+	 * @param t this thread
+	 */
 	public void setThread(Thread t) {
 		this.thread = t;
 	}

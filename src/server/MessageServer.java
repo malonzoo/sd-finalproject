@@ -2,14 +2,23 @@ package server;
 
 import java.io.*;
 import java.net.*;
-
 import publisher.Publisher;
-import user.User;
-import user.UserPool;
+import user.*;
 
+/**
+ * MessageServer that is the server for this program
+ * @author camillemalonzo
+ *
+ */
 public class MessageServer {	
+	
+	/* the handler that manages the requests between this server and its many clients */
 	private static Publisher pub;
 	
+	/**
+	 * Initialize the Message Server
+	 * @throws IOException
+	 */
 	public MessageServer() throws IOException {
 		
 		// attach the server to port 5000
@@ -31,6 +40,12 @@ public class MessageServer {
 		}
 	}
 	
+	/**
+	 * Create a new MessageServer at the start of this program
+	 * @param args
+	 * @throws IOException
+	 * @throws InterruptedException
+	 */
 	public static void main(String[] args) throws IOException, InterruptedException {
 		new MessageServer();
 	}
